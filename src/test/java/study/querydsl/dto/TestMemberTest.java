@@ -6,6 +6,7 @@ import static study.querydsl.dto.QTestMember.*;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,16 @@ class TestMemberTest {
     em.persist(new TestMember("member2", "team2", 10));
     em.persist(new TestMember("member3", "team3", 10));
     em.persist(new TestMember("member4", "team4", 10));
+  }
+
+  @Test
+  void map() {
+    List<TestMember> result = queryFactory
+        .selectFrom(testMember)
+        .fetch();
+
+    result.stream().map(TestDto::new).collect(Collectors.toList()).forEach(System.out::println);
+
   }
 
   @Test

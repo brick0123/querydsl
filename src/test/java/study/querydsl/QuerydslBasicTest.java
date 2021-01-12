@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static study.querydsl.entity.QMember.member;
 import static study.querydsl.entity.QTeam.team;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
@@ -528,7 +530,6 @@ public class QuerydslBasicTest {
     List<UserDto> result = queryFactory
         .select(
             Projections.fields(UserDto.class,
-                member.username.as("name"),
                 member.age
             )
         )
@@ -538,7 +539,6 @@ public class QuerydslBasicTest {
       System.out.println("userDto = " + userDto);
     }
   }
-
 
   @Test
   void findDtoByQueryProjection() {
@@ -553,4 +553,119 @@ public class QuerydslBasicTest {
       System.out.println("memberDto = " + memberDto);
     }
   }
+
+  @Test
+  void dynamicQuery_BooleanBuilder() {
+    String usernameParam = "member1";
+    Integer ageParam = 10;
+
+    List<Member> result = searchMember1(usernameParam, ageParam);
+
+    assertThat(result.size()).isEqualTo(1);
+  }
+
+  private List<Member> searchMember1(String usernameCond, Integer ageCond) {
+    BooleanBuilder builder = new BooleanBuilder();
+
+    if (usernameCond != null) {
+      builder.and(member.username.eq(usernameCond));
+    }
+
+    if (ageCond != null) {
+      builder.and(member.age.eq(ageCond));
+    }
+
+    return queryFactory
+        .selectFrom(member)
+        .where(builder)
+        .fetch();
+  }
+
+  @Test
+  void dynamicQuery_WhereParam() {
+    String usernameParam = "member1";
+    Integer ageParam = 1;
+
+    List<Member> result = searchMember2(usernameParam, ageParam);
+
+    assertThat(result.size()).isEqualTo(1);
+  }
+
+  private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+    return queryFactory
+        .selectFrom(member)
+        .where(allEq(usernameCond, ageCond))
+        .fetch();
+  }
+
+  private BooleanExpression usernameEq(String usernameCond) {
+    return usernameCond != null ? member.username.eq(usernameCond) : null;
+  }
+
+  private BooleanExpression ageEq(Integer ageCond) {
+    return ageCond != null ? member.age.eq(ageCond) : null;
+  }
+
+  private BooleanExpression allEq(String usernameCond, Integer ageCond) {
+    return usernameEq(usernameCond).and(ageEq(ageCond));
+  }
+
+  @Test
+  void bulkUpdate() {
+    queryFactory
+        .update(member)
+        .set(member.username, "비회원")
+        .where(member.age.lt(20))
+        .execute();
+
+    // 불일치 헤결
+    em.flush();
+    em.clear();
+  }
+
+  @Test
+  void bulkAdd() {
+    queryFactory
+        .update(member)
+        .set(member.age, member.age.add(1))  // age = add + 1
+        .execute();
+  }
+
+  @Test
+  void bulkDelete() {
+    long count = queryFactory
+        .delete(member)
+        .where(member.age.gt(10))
+        .execute();
+  }
+
+  @Test
+  void sqlFunction() {
+    List<String> result = queryFactory
+        .select(
+            Expressions.stringTemplate(
+                "function('replace', {0}, {1}, {2})",
+                member.username, "member", "M"))
+        .from(member)
+        .fetch();
+    for (String s : result) {
+      System.out.println("s = " + s);
+    }
+  }
+
+  @Test
+  void sqlFunction2() {
+    List<String> result = queryFactory
+        .select(member.username)
+        .from(member)
+//        .where(member.username.eq(
+//            Expressions.stringTemplate(/"function('lower', {0})", member.username)))
+        .where(member.username.eq(member.username.lower()))
+        .fetch();
+
+    for (String s : result) {
+      System.out.println("s = " + s);
+    }
+  }
 }
+
