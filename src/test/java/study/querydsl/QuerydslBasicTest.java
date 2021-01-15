@@ -14,6 +14,7 @@ import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.util.List;
+import java.util.function.Supplier;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
@@ -23,7 +24,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.MemberSearchCondition;
+import study.querydsl.dto.MemberTeamDto;
 import study.querydsl.dto.QMemberDto;
+import study.querydsl.dto.QMemberTeamDto;
 import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
@@ -665,6 +669,50 @@ public class QuerydslBasicTest {
 
     for (String s : result) {
       System.out.println("s = " + s);
+    }
+  }
+
+  @Test
+  void m1() {
+    MemberSearchCondition condition = new MemberSearchCondition();
+    condition.setAgeGoe(10);
+    condition.setAgeLoe(null);
+
+    List<MemberTeamDto> fetch = queryFactory
+        .select(new QMemberTeamDto(
+            member.id,
+            member.username,
+            member.age,
+            team.id,
+            team.name))
+        .from(member)
+        .leftJoin(member.team, team)
+        .where(
+            whereCondition(condition))
+        .fetch();
+
+    for (MemberTeamDto memberTeamDto : fetch) {
+      System.out.println("memberTeamDto = " + memberTeamDto);
+    }
+  }
+
+  private BooleanBuilder whereCondition(MemberSearchCondition condition) {
+    return ageGoe(condition.getAgeGoe()).and(ageLoe(condition.getAgeLoe()));
+  }
+
+  private BooleanBuilder ageLoe(Integer age) {
+    return nullSafeBuilder(() -> member.age.loe(age));
+  }
+
+  private BooleanBuilder ageGoe(Integer age) {
+    return nullSafeBuilder(() -> member.age.goe(age));
+  }
+
+  public static BooleanBuilder nullSafeBuilder(Supplier<BooleanExpression> f) {
+    try {
+      return new BooleanBuilder(f.get());
+    } catch (NullPointerException e) {
+      return new BooleanBuilder();
     }
   }
 }

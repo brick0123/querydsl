@@ -1,8 +1,5 @@
 package study.querydsl.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.ToString;
 import study.querydsl.dto.TestMember;
 
